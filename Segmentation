@@ -1,0 +1,123 @@
+import os
+import numpy as np
+import imageio.v2 as imageio
+from skimage import filters, morphology, exposure, measure, segmentation, color, util
+from skimage.color import label2rgb
+from scipy import ndimage as ndi
+
+# ----------------------------------------
+# 1. Load JPEG channels from /segmentation folder
+# ----------------------------------------
+folder = "segmentation"
+
+green_path = os.path.join(folder, "green_live.png")
+red_path   = os.path.join(folder, "red_dead.png")
+
+green = imageio.imread(green_path)
+red   = imageio.imread(red_path)
+
+# Ensure grayscale
+green = util.img_as_ubyte(color.rgb2gray(green)) if green.ndim == 3 else green
+red   = util.img_as_ubyte(color.rgb2gray(red)) if red.ndim == 3 else red
+
+# Normalize to 0–255
+green = exposure.rescale_intensity(green, out_range=(0, 255)).astype(np.uint8)
+red   = exposure.rescale_intensity(red, out_range=(0, 255)).astype(np.uint8)
+
+
+# ----------------------------------------
+# 2. Merge RGB image (for visualization only)
+# ----------------------------------------
+merged_rgb = np.zeros((*green.shape, 3), dtype=np.uint8)
+merged_rgb[:, :, 1] = green
+merged_rgb[:, :, 0] = red
+imageio.imwrite("merged_live_dead.png", merged_rgb)
+
+# ----------------------------------------
+# 3. Watershed segmentation function
+# ----------------------------------------
+# def watershed_segment(channel):
+#     blur = filters.gaussian(channel, sigma=1)
+#     thresh = filters.threshold_otsu(blur)
+#     binary = (blur > thresh).astype(np.uint8) * 255
+
+#     # Opening to clean small noise
+#     clean = morphology.opening(binary, morphology.disk(1))
+
+#     # Distance transform
+#     dist = ndi.distance_transform_edt(clean)
+#     dist_norm = dist / dist.max()
+
+#     # Sure foreground
+#     sure_fg = dist_norm > 0.3
+
+#     # Sure background
+#     sure_bg = morphology.dilation(clean, morphology.disk(1)) > 0
+
+#     # Unknown region
+#     unknown = sure_bg & (~sure_fg)
+
+#     # Markers
+#     markers = measure.label(sure_fg) + 1
+#     markers[unknown] = 0
+
+#     # Watershed
+#     markers = segmentation.watershed(
+#         -dist, markers, mask=clean.astype(bool)
+#     )
+
+#     return markers, clean, dist_norm
+
+def watershed_segment(channel):
+    # 1. Smooth
+    blur = filters.gaussian(channel, sigma=1)
+    # 2. Binary mask
+    thresh = filters.threshold_otsu(blur)
+    binary = blur > thresh
+    # 3. Clean noise
+    clean = morphology.opening(binary, morphology.disk(1))
+    # 4. Distance transform
+    dist = ndi.distance_transform_edt(clean)
+    # 5. Foreground markers
+    dist_norm = dist / dist.max() if dist.max() != 0 else dist
+    sure_fg = dist_norm > 0.3
+    # 6. Background
+    sure_bg = morphology.dilation(clean, morphology.disk(2))
+    unknown = sure_bg & (~sure_fg)
+    # 7. Markers: label foreground seeds
+    markers = measure.label(sure_fg)
+    # Background = 0, unknown = 0 already
+    # Markers are correct for watershed
+    # 8. Watershed
+    labels = segmentation.watershed(-dist, markers, mask=clean)
+    return labels
+
+# ----------------------------------------
+# 4. Segment total cells from green channel
+# ----------------------------------------
+total_markers = watershed_segment(green)
+total_cells = len(np.unique(total_markers[total_markers > 1]))
+# imageio.imwrite("clean_green.png", clean)
+# imageio.imwrite("markers.png", total_markers)
+
+colored = label2rgb(total_markers, bg_label=0, bg_color=(0, 0, 0), kind="overlay")
+imageio.imwrite("live_cells_mask.png", (colored * 255).astype(np.uint8))
+
+# ----------------------------------------
+# 5. Segment dead cells from red channel
+# ----------------------------------------
+dead_markers = watershed_segment(red)
+dead_cells = len(np.unique(dead_markers[dead_markers > 1]))
+
+dead_colored = label2rgb(dead_markers, bg_label=0, bg_color=(0, 0, 0), kind="overlay")
+imageio.imwrite("dead_cells_mask.png", (dead_colored * 255).astype(np.uint8))
+# ----------------------------------------
+# 6. Compute live cells and ratio
+# ----------------------------------------
+live_cells = total_cells - dead_cells
+ratio = live_cells / dead_cells if dead_cells > 0 else float("inf")
+
+print("Total cells:", total_cells)
+print("Dead cells:", dead_cells)
+print("Live cells:", live_cells)
+print("Live/Dead ratio:", ratio)
