@@ -1,0 +1,52 @@
+from machine import Pin
+import time
+
+## It had some errors -> changed. 
+# Reassigned pins
+# red=STEP ch1, green=DIR ch1, blue=STEP ch2, white=DIR ch2
+# sensor1/sensor2 = endstops, beacon = status LED
+pins = {
+    "stepper": {
+        "ch1": {"step_pin": 9,  "dir_pin": 10},   # was red/green
+        "ch2": {"step_pin": 12, "dir_pin": 16},   # was blue/white
+        "enable": None,                   # tie EN pin LOW on shield, or assign a pin
+    },
+    "endstop1": 15,   # was sensor1
+    "endstop2": 7,    # was sensor2
+    "beacon":   14
+}
+
+
+class StepperChannel:
+    def __init__(self, step_pin: int, dir_pin: int, enable_pin: int = None):
+        self.step = Pin(step_pin, Pin.OUT)
+        self.dir_  = Pin(dir_pin,  Pin.OUT)
+        self.en   = Pin(enable_pin, Pin.OUT) if enable_pin else None
+        self.step.off()
+
+    def enable(self):
+        """EN is active LOW on A4988/DRV8825."""
+        if self.en:
+            self.en.off()
+
+    def disable(self):
+        if self.en:
+            self.en.on()
+
+    def move(self, steps: int, forward: bool = True, delay_us: int = 1000):
+        """
+        steps    – number of steps to move
+        forward  – direction
+        delay_us – microseconds between step pulses (controls speed)
+        """
+        self.dir_.value(1 if forward else 0)
+        for _ in range(abs(steps)):
+            self.step.on()
+            time.sleep_us(delay_us)
+            self.step.off()
+            time.sleep_us(delay_us)
+
+
+# --- Instantiate ---
+ch1 = StepperChannel(**pins["stepper"]["ch1"])
+ch2 = StepperChannel(**pins["stepper"]["ch2"])

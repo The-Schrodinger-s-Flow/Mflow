@@ -1,0 +1,125 @@
+name: Mflow           ## Name of the scope
+type: Perfusion flow microscope.
+description: |
+  The offical microscope from the house of The Schrödinger's Flow.
+  Two channel fluorescence microscope build on top of openflexure v7 microscopy frame with 
+  an attached two channel syringe pump. The microscope has two cameras to detect two fluorescence
+  channels.
+
+
+
+## Hardware configuration -----
+devices:
+  cam0:
+    description: Microscope first camera.
+    kind: detectors.cameras.libcamera.Camera
+    args: []
+    kwargs:
+      camera: 0
+  cam1:
+    description: Microscope second camera.
+    kind: detectors.cameras.libcamera.Camera
+    args: []
+    kwargs:
+      camera: 1
+
+  lit:
+    description: Metadata object for the dummy illumination source.
+    args: []
+    kwargs: 
+      name: lit
+      persistent: True
+      color: white
+      wavelength: null
+
+  pico: 
+    description: Micro-controller that hosts a 2 channel controller for two NIMA 17 stepper motors.
+    kind: hive.processorgroups.micropython.SerialMPDevice
+    args: []
+    kwargs:
+        name: pico
+        search_name: picodev
+        connect: "autoconnect"
+        exec_main: True
+        handshake: True
+
+  stage:
+    description: Three axis open-flexure stage control (Sangaboard).
+    kind: sangaboard.Sangaboard
+    args: []
+#      - "/dev/ttyUSB0"
+    kwargs: {}
+    
+  openflexure-frame:
+    description: "Open flexure micrscopy v7."
+    kind: hive.physical.PhysicalObject
+    args: []
+    kwargs: 
+      name: openflexure
+      version: OpenFlexure Microscope v7
+      persistent: True
+      reference: https://openflexure.org/projects/microscope/build#openflexure-microscope-v7
+
+  optics:
+    description: "Description of the optics."
+    kind: hive.physical.PhysicalObject
+    args: []
+    kwargs: 
+      name: optics
+      persistent: True
+      filter_cube1: null
+      filter_cube1: null
+      objective: "10X-inf-corrected"
+
+  channel:
+    description: "Ibidi channel"
+    kind: hive.physical.PhysicalObject
+    args: []
+    kwargs: 
+      name: ibidi
+      persistent: True
+      channel_height: null
+      pre_treatment: null
+      reference: null
+
+  sample:
+    description: "Cell culture sample"
+    kind: hive.physical.PhysicalObject
+    args: []
+    kwargs: 
+      name: sample
+      persistent: True
+      strain: Bacteria (Bacillus subtilis)
+      media: Standard LB
+      stains:
+        - null
+        - null
+
+
+## Control switches
+Experiment:
+  scripts_dirs:
+    - ~/trappyscopes/scripts/
+    - ~/trappyscopes/tests/
+
+config:
+  expdir: "~/experiments"
+  autostart_cli_after_reboot: false
+  ui_mode: interactive
+  venv: 
+    active: false
+    command: source ~/opt/miniconda3/bin/activate
+    name: trappy
+  git_sync: false
+  git_dependencies: []
+  set_wallpaper: false
+  log_level: 10
+  file_server:
+    active: false
+    destination: "{date}"
+    server: null
+    share: null
+    username: null
+    password: null
+  startup_scripts:
+    - schrodingers_flow/routine.py
