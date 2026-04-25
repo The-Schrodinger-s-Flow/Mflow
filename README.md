@@ -164,9 +164,8 @@ The microscope body is based on the **OpenFlexure** design with custom filter cu
 4. Mount the **infinity-corrected objective** in the OpenFlexure objective port.
 5. Install the **blue LED** paired with the **FITC Excitation Filter** (479/30 nm) in the illumination arm.
 6. Install the **FITC Dichroic Mirror** (T: 514.5–900 nm) in the primary filter cube to direct excitation toward the sample and split emission into the green path.
-7. Place the **FITC Emission Filter** (537/40 nm) in the green detection arm.
-8. Install the **Texas Red Dichroic Mirror** (T: 608–900 nm) in the secondary cube to split off the red path, with the **Texas Red Emission Filter** (635.5/58 nm) in the red arm.
-9. Mount one **Thorlabs AC127-050-A** achromatic doublet (f = 50 mm, Ø½") in front of each Raspberry Pi Camera v2 to focus fluorescence onto the sensor.
+7. Install the **Texas Red Dichroic Mirror** (T: 608–900 nm) in the secondary cube to split off the red path, with the **Texas Red Emission Filter** (635.5/58 nm) in the red detection arm and the **FITC Emission Filter** (537/40 nm) in the green detection arm.
+8. Mount one **Thorlabs AC127-050-A** achromatic doublet (f = 50 mm, Ø½") in front of each Raspberry Pi Camera v2 to focus fluorescence onto the sensor.
 
 ### Electronics
 
