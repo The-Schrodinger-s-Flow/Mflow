@@ -233,8 +233,7 @@ cameras:    # Raspberry Pi Camera v2 indices
 blue:       # Blue LED GPIO pin (via Pi Pico)
 ch1:        # Pump Channel 1 serial port
 ch2:        # Pump Channel 2 serial port
-stage:      # Sangaboard serial port
-            # (comment out if controlling stage via sanga-python-gui instead)
+stage:      # Sangaboard serial port (comment out if controlling stage via sanga-python-gui instead)
 ```
 
 2. Run the main acquisition routine:
