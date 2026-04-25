@@ -1,6 +1,9 @@
 # Mflow — Automated Microfluidic Fluorescence Microscope
 
-> **Built at the EMBO Hackathon Microscopy Workshop · ITQB NOVA, Lisbon**
+> **DISCLAMER: Build in 6 hours. It is a first concept. It does not work. The optics needs revision.**
+
+> **Built at the EMBO Hack Your Microscopy Workshop · ITQB NOVA, Lisbon**
+
 
 Mflow is an open, reproducible automated microfluidic staining and imaging platform for **live/dead assays in bacterial cultures**. It was designed and built during the EMBO Hack Your Microscopy Workshop at ITQB NOVA (Oeiras, Lisbon) as a response to the challenge:
 
@@ -21,7 +24,7 @@ The system combines an OpenFlexure-based microscope with dual-channel fluorescen
   - [Microfluidics](#microfluidics)
   - [3D Printed Parts](#3d-printed-parts)
 - [Software Setup](#software-setup)
-  - [Microscope Control (python-microscope)](#microscope-control-python-microscope)
+  - [Microscope Control (Trappy-Scopes)](#microscope-control-trappy-scopes)
   - [Segmentation Pipeline](#segmentation-pipeline)
 - [Protocol](#protocol)
 - [Repository Structure](#repository-structure)
@@ -38,8 +41,10 @@ The goal was to build a fully automated system capable of:
 2. Imaging the stained sample simultaneously in two fluorescence channels (green and red)
 3. Automatically segmenting the images to count live cells, dead cells, and compute a live/dead ratio
 
-**Organism:** *Bacillus subtilis*   
+**Organism:** *Bacillus subtilis*
+
 **Stains used:**
+
 | Stain | Target | Emission |
 |---|---|---|
 | SYTO 9 | All cells (live + dead) | Green (~500 nm) |
@@ -58,7 +63,7 @@ Both stains can be applied simultaneously and imaged in separate channels withou
 │  │  Camera 1    │  │  Camera 2            │ │
 │  │  (Green ch.) │  │  (Red ch.)           │ │
 │  └──────┬───────┘  └──────────┬───────────┘ │
-│         │  python-microscope  │             │
+│         │    Trappy-Scopes    │             │
 │         └────────────────┬────┘             │
 │                          │                  │
 │  ┌───────────────────────▼──────────────┐   │
@@ -76,7 +81,7 @@ Both stains can be applied simultaneously and imaged in separate channels withou
          ┌────────────▼─────────────┐
          │  ibidi µ-Slide (chip)    │
          │  Single channel, T-inlet │
-         │  Bacteria + PDL coating  │
+         │  Bacteria + PLL coating  │
          └──────────────────────────┘
                       │
          ┌────────────▼─────────────┐
@@ -94,44 +99,56 @@ Both stains can be applied simultaneously and imaged in separate channels withou
 
 ### Optics & Imaging
 
-| Item | Quantity | Notes |
+| Item | Part Number | Qty | Notes |
+|---|---|---|---|
+| OpenFlexure Microscope (body) | — | 1 | FDM printed — see `freya_openscad/` for modified parts |
+| Infinity-corrected objective | — | 1 | Plan achromat, compatible with OpenFlexure mount |
+| Achromatic doublet lens | [Thorlabs AC127-050-A](https://www.thorlabs.com/thorproduct.cfm?partnumber=AC127-050-A) | 2 | f = 50 mm, Ø½" (12.7 mm), ARC: 400–700 nm — one per camera |
+| Raspberry Pi Camera Module v2 | — | 2 | One for green channel, one for red channel |
+| Blue LED (excitation) | — | 1 | ~470 nm peak |
+
+**Thorlabs MDF05 Filter Set — FITC (SYTO 9 / Green channel)**
+
+| Component | Spec | Role |
 |---|---|---|
-| OpenFlexure Microscope (body) | 1 | See `freya_openscad/` for the modified parts |
-| Infinity-corrected objective | 1 | e.g. 10× or 20×, plan achromat |
-| 50 mm camera lens | 2 | One per camera, to focus fluorescence on sensor |
-| Raspberry Pi Camera Module v2 | 2 | One for green channel, one for red channel |
-| Blue LED (excitation) | 1 | ~470 nm peak |
-| Dichroic mirror | 1 | Long-pass, splits green and red emission |
-| Emission filter — green | 1 | ~530/30 nm bandpass |
-| Emission filter — red | 1 | ~617/30 nm bandpass |
+| MDF05-FITC Excitation Filter | CWL = 479 nm, BW = 30 nm | Bandpass for blue LED excitation |
+| MDF05-FITC Dichroic Mirror | R Band: 380–497 nm · T Band: 514.5–900 nm | Primary beam splitter |
+| MDF05-FITC Emission Filter | CWL = 537 nm, BW = 40 nm | Green emission bandpass |
+
+**Thorlabs MDF05 Filter Set — Texas Red (Propidium Iodide / Red channel)**
+
+| Component | Spec | Role |
+|---|---|---|
+| MDF05-TXRED Dichroic Mirror | R Band: 381–460 nm · T Band: 608–900 nm | Separates red emission arm |
+| MDF05-TXRED Emission Filter | CWL = 635.5 nm, BW = 58 nm | Red emission bandpass |
 
 ### Electronics
 
-| Item | Quantity | Notes |
+| Item | Qty | Notes |
 |---|---|---|
-| Raspberry Pi 5 | 1 | Main controller |
-| Raspberry Pi Pico | 1 | One for pump CNC board  and for controlling the LED|
-| Sangaboard | 1 | OpenFlexure motor driver board |
-| CNC control board | 1 | Drives Poseidon stepper motors |
+| Raspberry Pi 5 | 1 | Main controller — runs Trappy-Scopes, cameras, and stage |
+| Raspberry Pi Pico | 1 | Controls pump CNC board and blue LED; flashed with `steppercontrol.mpy` |
+| [Sangaboard](https://sangaboard.readthedocs.io/en/latest/) | 1 | OpenFlexure motor driver board (integrated Pi Pico + stepper drivers) |
+| [CNC Shield](https://mikroshop.ch/pdf/CNC-Shield-Guide.pdf) | 1 | Drives Poseidon stepper motors |
 
 ### Microfluidics
 
-| Item | Quantity | Notes |
+| Item | Qty | Notes |
 |---|---|---|
 | ibidi µ-Slide (single channel) | 1 | 1 inlet, 1 outlet |
-| T-connector | 1 | Splits two pump lines into single inlet |
-| [Poseidon syringe pump](https://github.com/pachterlab/poseidon) | 2 | Open-source syringe pump |
-| Syringe (compatible with Poseidon) | 2 | One per pump |
-| Tubing (PTFE or silicone) | ~1 m | To connect pump → chip |
+| T-connector | 1 | Splits two pump lines into single chip inlet |
+| [Poseidon syringe pump](https://github.com/pachterlab/poseidon) | 2 | Open-source syringe pump driven by CNC board |
+| Compatible syringe | 2 | One per pump |
+| PTFE or silicone tubing | ~1 m | Connects pumps to chip |
 
 ### Reagents
 
 | Reagent | Purpose |
 |---|---|
-| SYTO 9 | Fluorescent stain — all cells (green) |
-| Propidium Iodide (PI) | Fluorescent stain — dead cells (red) |
+| SYTO 9 | Fluorescent stain — all cells (green channel) |
+| Propidium Iodide (PI) | Fluorescent stain — dead cells only (red channel) |
 | PBS (Phosphate Buffered Saline) | Washing buffer |
-| Poly-L-Lysine (PLL) | Bacterial adhesion coating |
+| Poly-L-Lysine (PLL) | Surface coating for bacterial adhesion |
 
 ---
 
@@ -139,108 +156,127 @@ Both stains can be applied simultaneously and imaged in separate channels withou
 
 ### Optics
 
-The microscope body is based on the **OpenFlexure** design. The dual-channel detection was added as a custom modification:
+The microscope body is based on the **OpenFlexure** design with custom filter cubes and breadboard mount.
 
-1. Assemble the o[penflexure v7 microscope](https://openflexure.org/projects/microscope/build#openflexure-microscope-v7), without the optics part.
-2. Print custom filter cubes (check `freya_openscad`). 
-3. Mount it to a breadboard with the custom mount plate (check `freya_openscad`). 
-4. Mount the **infinity-corrected objective** in the OpenFlexure objective mount.
-5. Place the **blue LED** in the illumination arm as the excitation source (~470 nm) within the custom cube arrangement.
-6. Install the **dichroic mirror** in the optical path above the objective to split emission into two arms.
-7. Place the **green bandpass filter** (~530/30 nm) in the green arm and the **red bandpass filter** (~617/30 nm) in the red arm.
+1. Assemble the [OpenFlexure v7 microscope body](https://openflexure.org/projects/microscope/build#openflexure-microscope-v7), **without** the standard optics module.
+2. Print the custom filter cubes from `freya_openscad/` and mount them in the optical path above the objective.
+3. Print and attach the custom breadboard mount plate (also in `freya_openscad/`) to fix the microscope to an optical breadboard.
+4. Mount the **infinity-corrected objective** in the OpenFlexure objective port.
+5. Install the **blue LED** paired with the **FITC Excitation Filter** (479/30 nm) in the illumination arm.
+6. Install the **FITC Dichroic Mirror** (T: 514.5–900 nm) in the primary filter cube to direct excitation toward the sample and split emission into the green path.
+7. Place the **FITC Emission Filter** (537/40 nm) in the green detection arm.
+8. Install the **Texas Red Dichroic Mirror** (T: 608–900 nm) in the secondary cube to split off the red path, with the **Texas Red Emission Filter** (635.5/58 nm) in the red arm.
+9. Mount one **Thorlabs AC127-050-A** achromatic doublet (f = 50 mm, Ø½") in front of each Raspberry Pi Camera v2 to focus fluorescence onto the sensor.
 
 ### Electronics
 
-1. Connect the sangaboard to the Raspberry Pi 5 and the OpenFlexure stage stepper motors ports.
-3. Flash `steppercontrol.mpy` onto the second Raspberry Pi Pico and connect it to the CNC control board that drives the Poseidon pumps. Pins are specified in the file.
-4. Connect both Raspberry Pi Camera v2 modules to the Raspberry Pi 5 via ribbon cables.
-5. Also connect the illumination LED to the raspberry pi pico.
+1. Connect the **Sangaboard** to the Raspberry Pi 5 via USB, and wire it to the OpenFlexure stage stepper motors. Refer to the [Sangaboard documentation](https://sangaboard.readthedocs.io/en/latest/) for pin assignments.
+2. Flash `steppercontrol.mpy` onto the **Raspberry Pi Pico** and connect it to the **CNC Shield** driving the Poseidon pumps. Pin assignments are specified in the file.
+3. Connect the **blue LED** to the Raspberry Pi Pico (same Pico as the pumps). The LED pin is set in `trappyconfig.yaml`.
+4. Connect both **Raspberry Pi Camera v2** modules to the Raspberry Pi 5 via ribbon cables.
+
 ### Microfluidics
 
-1. Prepare the **ibidi µ-Slide** by coating the inner surface with **poly-L-lysine (PLL)**:
-   - Pipette PLL solution into the chip channel.
+1. Coat the **ibidi µ-Slide** channel with **Poly-L-Lysine (PLL)** for bacterial adhesion:
+   - Pipette PLL solution to fill the channel completely.
    - Allow to **dry overnight** at room temperature.
    - Rinse gently with PBS before introducing bacteria.
-2. Load your bacterial culture into the chip and allow adhesion for the appropriate time.
-3. Connect the T-connector to the single inlet of the chip.
-4. Attach **Poseidon Pump Channel 1** (loaded with PBS) and **Poseidon Pump Channel 2** (loaded with SYTO 9 + PI stain mixture) to the two arms of the T-connector.
+2. Load the bacterial culture into the chip. Allow sufficient time for adhesion.
+3. Connect the **T-connector** to the single inlet of the chip.
+4. Attach **Poseidon Pump Channel 1** (PBS) and **Poseidon Pump Channel 2** (SYTO 9 + PI mixture) to the two arms of the T-connector.
 5. Connect the chip outlet to a waste reservoir.
 
+### 3D Printed Parts
+
+All custom design files are in `freya_openscad/`, designed for standard FDM printing:
+
+| Parameter | Value |
+|---|---|
+| Layer height | 0.2 mm |
+| Infill | 20–30% |
+| Material | PLA or PETG |
+| Supports | As required per part |
+
+Open `.scad` files in [OpenSCAD](https://openscad.org/), render, and export to STL for slicing.
+
+---
 
 ## Software Setup
 
 ### Installation
 
-1. ```bash
+```bash
 git clone https://github.com/The-Schrodinger-s-Flow/Mflow.git
 cd Mflow
 python install_packages.py
 mv trappyconfig.yaml ~/trappyconfig.yaml
 ```
-2. Install Trappy-Scopes
-```git clone https://github.com/Trappy-Scopes/trappyscopes.git
-    cd trappyscopes
-    python main.py --install
+
+Then install [Trappy-Scopes](https://github.com/Trappy-Scopes/trappyscopes):
+
+```bash
+git clone https://github.com/Trappy-Scopes/trappyscopes.git
+cd trappyscopes
+python main.py --install
 ```
 
+---
 
-### Microscope Control (python-microscope)
+### Microscope Control (Trappy-Scopes)
 
-The system is controlled via [Trappy-Scopes]([https://python-microscope.org/](https://github.com/Trappy-Scopes/trappyscopes)), configured through the YAML file in this repository.
+The system is controlled via **[Trappy-Scopes](https://github.com/Trappy-Scopes/trappyscopes)**, configured through `trappyconfig.yaml`.
 
-1. Edit `trappyconfig.yaml` to match your hardware (device ports, camera indices, LED pin, etc.). The file contains comments — fill in any fields marked as gaps.
+1. Edit `trappyconfig.yaml` to match your hardware. Fill in any fields marked as gaps:
+
+```yaml
+cameras:    # Raspberry Pi Camera v2 indices
+blue:       # Blue LED GPIO pin (via Pi Pico)
+ch1:        # Pump Channel 1 serial port
+ch2:        # Pump Channel 2 serial port
+stage:      # Sangaboard serial port
+            # (comment out if controlling stage via sanga-python-gui instead)
+```
+
 2. Run the main acquisition routine:
 
 ```bash
 python routine.py
 ```
 
-3. To launch the Sangaboard stage control GUI:
+3. To launch the Sangaboard stage control GUI separately:
 
 ```bash
 python sanga-python-gui.py
 ```
 
-#### Key configuration parameters in `trappyconfig.yaml`
-
-```yaml
-# Fill in your device-specific values:
-cameras:         # Raspberry Pi Camera v2 indices
-blue:           # Blue LED GPIO pin (via Pi Pico)
-ch1:            # Pump 1
-ch2:            # Pump 2
-stage:         # Sangaboard serial port (if not using the GUI, otherwise comment-out this field)
-```
-
-> **Note:** The config file is included in the repo. Refer to it and patch in your specific port numbers and device addresses.
-
 ---
 
 ### Segmentation Pipeline
 
-Located in `Segmentation/`. The script takes two fluorescence images as input and outputs live/dead statistics.
+Located in `Segmentation/`. Takes two fluorescence images as input and outputs live/dead cell statistics.
 
 **Inputs:**
-- `green_channel.png` — SYTO 9 image (all cells, green)
-- `red_channel.png` — Propidium Iodide image (dead cells only, red)
 
-**Algorithm:**
-- Thresholding and **watershed segmentation** to separate touching cells
-- Separate masks generated for total cells and dead cells
+| File | Description |
+|---|---|
+| `green_channel.png` | SYTO 9 image — all cells (green) |
+| `red_channel.png` | Propidium Iodide image — dead cells only (red) |
+
+**Algorithm:** Thresholding followed by **watershed segmentation** to correctly separate touching or overlapping cells. Independent masks are computed for total cells and dead cells.
 
 **Outputs:**
-- `mask_all_cells.png` — mask of all cells (from green channel)
-- `mask_dead_cells.png` — mask of dead cells (from red channel)
-- `overlay_live_dead.png` — combined live/dead visualisation
-- Console output with:
-  - Total cell count
-  - Dead cell count
-  - Live/dead ratio
+
+| File / Output | Description |
+|---|---|
+| `mask_all_cells.png` | Binary mask of all cells (from green channel) |
+| `mask_dead_cells.png` | Binary mask of dead cells (from red channel) |
+| `overlay_live_dead.png` | Combined live/dead false-colour overlay |
+| Console | Total cell count · Dead cell count · Live/dead ratio |
 
 **Usage:**
 
 ```bash
-cd <<experiment-folder>>
+cd <experiment-folder>
 python Segmentation.py
 ```
 
@@ -250,14 +286,16 @@ python Segmentation.py
 
 ### Full Experiment Procedure
 
-1. **Chip preparation (night before):** Coat the ibidi µ-Slide channel with PDL. Allow to dry overnight.
-2. **Bacterial loading:** Introduce bacterial suspension into the chip. Wait for adhesion.
-3. **System startup:** Power on Raspberry Pi 5, connect cameras, Sangaboard, and pump board.
-4. **Configuration:** Edit `trappyconfig.yaml` for your setup. Launch `routine.py`.
-5. **Wash cycle:** Run Pump A (PBS) to wash unattached bacteria.
-6. **Staining:** Run Pump B (SYTO 9 + PI mixture) to introduce stains.
-7. **Imaging:** Capture simultaneous dual-channel images (green + red).
-8. **Analysis:** Run segmentation script on captured images to obtain live/dead counts and ratio.
+| Step | Action |
+|---|---|
+| **Night before** | Coat ibidi µ-Slide channel with PLL. Allow to dry overnight at RT. |
+| **Day of experiment** | Load bacterial suspension into chip. Allow time for adhesion. |
+| **System startup** | Power on Raspberry Pi 5. Connect cameras, Sangaboard, and CNC pump board via USB. |
+| **Configure** | Edit `trappyconfig.yaml` with correct port addresses and move to `~/`. |
+| **Wash** | Run Pump Channel 1 (PBS) to flush away unattached bacteria. |
+| **Stain** | Run Pump Channel 2 (SYTO 9 + PI mixture) to deliver fluorescent stains. |
+| **Image** | Capture simultaneous dual-channel images (green + red) via `routine.py`. |
+| **Analyse** | Run `Segmentation.py` on captured images to obtain live/dead counts and ratio. |
 
 ---
 
@@ -265,21 +303,33 @@ python Segmentation.py
 
 ```
 Mflow/
-├── freya_openscad/       # OpenSCAD files for 3D printed microscope components
+├── freya_openscad/       # OpenSCAD files — custom filter cubes and breadboard mount
 ├── Segmentation/         # Python segmentation pipeline (live/dead cell counting)
-├── routine.py            # Main acquisition and automation routine
+├── routine.py            # Main acquisition and automation routine (Trappy-Scopes)
 ├── sanga-python-gui.py   # GUI for Sangaboard stage control
-├── steppercontrol.mpy    # MicroPython firmware for stepper/pump control (Pi Pico)
-├── trappyconfig.yaml     # python-microscope device configuration file
+├── steppercontrol.mpy    # MicroPython firmware for pump stepper + LED control (Pi Pico)
+├── trappyconfig.yaml     # Trappy-Scopes hardware configuration file
 ├── install_packages.py   # Dependency installer
 └── README.md
 ```
 
 ---
 
+## References
+
+- [OpenFlexure Microscope v7 build guide](https://openflexure.org/projects/microscope/build#openflexure-microscope-v7)
+- [Sangaboard documentation](https://sangaboard.readthedocs.io/en/latest/)
+- [CNC Shield wiring guide](https://mikroshop.ch/pdf/CNC-Shield-Guide.pdf)
+- [Poseidon open-source syringe pump](https://github.com/pachterlab/poseidon)
+- [Trappy-Scopes microscope control software](https://github.com/Trappy-Scopes/trappyscopes)
+- [Thorlabs AC127-050-A — f=50 mm, Ø½" Achromatic Doublet, ARC: 400–700 nm](https://www.thorlabs.com/thorproduct.cfm?partnumber=AC127-050-A)
+- [Thorlabs MDF05 Filter Sets (FITC & Texas Red)](https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=12280)
+
+---
+
 ## Team
 
-Built during the **EMBO Hackathon Microscopy Workshop** at **ITQB NOVA, Oeiras, Lisbon**.
+Built during the **EMBO Hack Your Microscopy Workshop** at **ITQB NOVA, Oeiras, Lisbon**.
 
 *Team: The Schrödinger's Flow*
 
@@ -287,6 +337,6 @@ Built during the **EMBO Hackathon Microscopy Workshop** at **ITQB NOVA, Oeiras, 
 
 ## License
 
-This project is open hardware and open source. Hardware designs are shared under **CERN OHL v2**. Software is shared under the **MIT License**.
-
+This project is open hardware and open source. Hardware designs are shared under **CERN OHL v2**.
+Check specific software file for the licencing information.
 Reproducibility is a core goal — if something is unclear, please open an issue.
