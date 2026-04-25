@@ -2,7 +2,7 @@
 
 > **Built at the EMBO Hackathon Microscopy Workshop · ITQB NOVA, Lisbon**
 
-Mflow is an open, reproducible automated microfluidic staining and imaging platform for **live/dead assays in bacterial cultures**. It was designed and built during the EMBO Hackathon Microscopy Workshop at ITQB NOVA (Oeiras, Lisbon) as a response to the challenge:
+Mflow is an open, reproducible automated microfluidic staining and imaging platform for **live/dead assays in bacterial cultures**. It was designed and built during the EMBO Hack Your Microscopy Workshop at ITQB NOVA (Oeiras, Lisbon) as a response to the challenge:
 
 > *"In-Situ Live/Dead Staining of Bacterial Cultures — build an automated microfluidic staining and imaging system for live/dead assays."*
 
@@ -38,12 +38,12 @@ The goal was to build a fully automated system capable of:
 2. Imaging the stained sample simultaneously in two fluorescence channels (green and red)
 3. Automatically segmenting the images to count live cells, dead cells, and compute a live/dead ratio
 
-**Organism:** *Bacillus* sp. ("Vasilis")  
+**Organism:** *Bacillus subtilis*   
 **Stains used:**
 | Stain | Target | Emission |
 |---|---|---|
-| SYTO 9 | All cells (live + dead) | Green (~530 nm) |
-| Propidium Iodide (PI) | Dead cells only (compromised membrane) | Red (~617 nm) |
+| SYTO 9 | All cells (live + dead) | Green (~500 nm) |
+| Propidium Iodide (PI) | Dead cells only (compromised membrane) | Red (~618 nm) |
 
 Both stains can be applied simultaneously and imaged in separate channels without cross-talk when using appropriate filters.
 
@@ -96,7 +96,7 @@ Both stains can be applied simultaneously and imaged in separate channels withou
 
 | Item | Quantity | Notes |
 |---|---|---|
-| OpenFlexure Microscope (body) | 1 | Printed — see `freya_openscad/` |
+| OpenFlexure Microscope (body) | 1 | See `freya_openscad/` for the modified parts |
 | Infinity-corrected objective | 1 | e.g. 10× or 20×, plan achromat |
 | 50 mm camera lens | 2 | One per camera, to focus fluorescence on sensor |
 | Raspberry Pi Camera Module v2 | 2 | One for green channel, one for red channel |
@@ -110,7 +110,7 @@ Both stains can be applied simultaneously and imaged in separate channels withou
 | Item | Quantity | Notes |
 |---|---|---|
 | Raspberry Pi 5 | 1 | Main controller |
-| Raspberry Pi Pico | 2 | One for Sangaboard, one for pump CNC board |
+| Raspberry Pi Pico | 1 | One for pump CNC board  and for controlling the LED|
 | Sangaboard | 1 | OpenFlexure motor driver board |
 | CNC control board | 1 | Drives Poseidon stepper motors |
 
@@ -120,7 +120,7 @@ Both stains can be applied simultaneously and imaged in separate channels withou
 |---|---|---|
 | ibidi µ-Slide (single channel) | 1 | 1 inlet, 1 outlet |
 | T-connector | 1 | Splits two pump lines into single inlet |
-| Poseidon syringe pump | 2 | Open-source syringe pump |
+| [Poseidon syringe pump](https://github.com/pachterlab/poseidon) | 2 | Open-source syringe pump |
 | Syringe (compatible with Poseidon) | 2 | One per pump |
 | Tubing (PTFE or silicone) | ~1 m | To connect pump → chip |
 
@@ -131,7 +131,7 @@ Both stains can be applied simultaneously and imaged in separate channels withou
 | SYTO 9 | Fluorescent stain — all cells (green) |
 | Propidium Iodide (PI) | Fluorescent stain — dead cells (red) |
 | PBS (Phosphate Buffered Saline) | Washing buffer |
-| Poly-D-Lysine (PDL) | Bacterial adhesion coating |
+| Poly-L-Lysine (PLL) | Bacterial adhesion coating |
 
 ---
 
@@ -141,58 +141,52 @@ Both stains can be applied simultaneously and imaged in separate channels withou
 
 The microscope body is based on the **OpenFlexure** design. The dual-channel detection was added as a custom modification:
 
-1. Print the microscope body from the files in `freya_openscad/` using a standard FDM printer (PLA or PETG recommended).
-2. Mount the **infinity-corrected objective** in the OpenFlexure objective mount.
-3. Place the **blue LED** in the illumination arm as the excitation source (~470 nm).
-4. Install the **dichroic mirror** in the optical path above the objective to split emission into two arms.
-5. Place the **green bandpass filter** (~530/30 nm) in the green arm and the **red bandpass filter** (~617/30 nm) in the red arm.
-6. Mount one **50 mm camera lens** in front of each Raspberry Pi Camera v2 to relay the image onto the sensor.
+1. Assemble the o[penflexure v7 microscope](https://openflexure.org/projects/microscope/build#openflexure-microscope-v7), without the optics part.
+2. Print custom filter cubes (check `freya_openscad`). 
+3. Mount it to a breadboard with the custom mount plate (check `freya_openscad`). 
+4. Mount the **infinity-corrected objective** in the OpenFlexure objective mount.
+5. Place the **blue LED** in the illumination arm as the excitation source (~470 nm) within the custom cube arrangement.
+6. Install the **dichroic mirror** in the optical path above the objective to split emission into two arms.
+7. Place the **green bandpass filter** (~530/30 nm) in the green arm and the **red bandpass filter** (~617/30 nm) in the red arm.
 
 ### Electronics
 
-1. Flash the **Sangaboard firmware** onto one Raspberry Pi Pico following the [OpenFlexure Sangaboard guide](https://openflexure.org).
-2. Connect the Sangaboard to the OpenFlexure stage stepper motors.
-3. Flash `steppercontrol.mpy` onto the second Raspberry Pi Pico and connect it to the CNC control board that drives the Poseidon pumps.
+1. Connect the sangaboard to the Raspberry Pi 5 and the OpenFlexure stage stepper motors ports.
+3. Flash `steppercontrol.mpy` onto the second Raspberry Pi Pico and connect it to the CNC control board that drives the Poseidon pumps. Pins are specified in the file.
 4. Connect both Raspberry Pi Camera v2 modules to the Raspberry Pi 5 via ribbon cables.
-5. Connect the Sangaboard and the CNC/pump board to the Raspberry Pi 5 via USB.
-
+5. Also connect the illumination LED to the raspberry pi pico.
 ### Microfluidics
 
-1. Prepare the **ibidi µ-Slide** by coating the inner surface with **poly-D-lysine (PDL)**:
-   - Pipette PDL solution into the chip channel.
+1. Prepare the **ibidi µ-Slide** by coating the inner surface with **poly-L-lysine (PLL)**:
+   - Pipette PLL solution into the chip channel.
    - Allow to **dry overnight** at room temperature.
    - Rinse gently with PBS before introducing bacteria.
 2. Load your bacterial culture into the chip and allow adhesion for the appropriate time.
 3. Connect the T-connector to the single inlet of the chip.
-4. Attach **Poseidon Pump A** (loaded with PBS) and **Poseidon Pump B** (loaded with SYTO 9 + PI stain mixture) to the two arms of the T-connector.
+4. Attach **Poseidon Pump Channel 1** (loaded with PBS) and **Poseidon Pump Channel 2** (loaded with SYTO 9 + PI stain mixture) to the two arms of the T-connector.
 5. Connect the chip outlet to a waste reservoir.
 
-### 3D Printed Parts
-
-All custom OpenSCAD design files are in `freya_openscad/`. Parts are designed for standard FDM printing:
-
-- **Layer height:** 0.2 mm
-- **Infill:** 20–30%
-- **Material:** PLA or PETG
-- **Supports:** As required per part (check per-file)
-
-Open the `.scad` files in [OpenSCAD](https://openscad.org/), render, and export to STL for slicing.
-
----
 
 ## Software Setup
 
 ### Installation
 
-```bash
+1. ```bash
 git clone https://github.com/The-Schrodinger-s-Flow/Mflow.git
 cd Mflow
 python install_packages.py
+mv trappyconfig.yaml ~/trappyconfig.yaml
 ```
+2. Install Trappy-Scopes
+```git clone https://github.com/Trappy-Scopes/trappyscopes.git
+    cd trappyscopes
+    python main.py --install
+```
+
 
 ### Microscope Control (python-microscope)
 
-The system is controlled via [python-microscope](https://python-microscope.org/), configured through the YAML file in this repository.
+The system is controlled via [Trappy-Scopes]([https://python-microscope.org/](https://github.com/Trappy-Scopes/trappyscopes)), configured through the YAML file in this repository.
 
 1. Edit `trappyconfig.yaml` to match your hardware (device ports, camera indices, LED pin, etc.). The file contains comments — fill in any fields marked as gaps.
 2. Run the main acquisition routine:
@@ -212,9 +206,10 @@ python sanga-python-gui.py
 ```yaml
 # Fill in your device-specific values:
 cameras:         # Raspberry Pi Camera v2 indices
-led:             # Blue LED GPIO pin (via Pi Pico)
-pumps:           # Serial port for CNC pump board
-stage:           # Sangaboard serial port
+blue:           # Blue LED GPIO pin (via Pi Pico)
+ch1:            # Pump 1
+ch2:            # Pump 2
+stage:         # Sangaboard serial port (if not using the GUI, otherwise comment-out this field)
 ```
 
 > **Note:** The config file is included in the repo. Refer to it and patch in your specific port numbers and device addresses.
@@ -245,7 +240,8 @@ Located in `Segmentation/`. The script takes two fluorescence images as input an
 **Usage:**
 
 ```bash
-python Segmentation/segment.py --green green_channel.png --red red_channel.png
+cd <<experiment-folder>>
+python Segmentation.py
 ```
 
 ---
